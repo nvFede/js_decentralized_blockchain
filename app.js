@@ -1,6 +1,6 @@
 const express = require('express')
 const app = express()
-
+const fetch = require('node-fetch')
 const args = process.argv
 
 let BLOCKCHAIN_NODE = 8080
@@ -21,15 +21,15 @@ let nodes = []
 
 app.use(express.json())
 
-app.post('nodes/register', (req, res) => {
-  const urls = body.req
+app.post('/nodes/register', (req, res) => {
+  const urls = req.body
 
   urls.forEach(url => {
     const node = new BlockchainNode(url)
     nodes.push(node)
+    // res.send(`New node ${node} registered correctly!.`)
   })
   res.json(nodes)
-  res.send('New node registered correctly!.')
 })
 
 app.post('/transactions', (req, res) => {
@@ -46,10 +46,44 @@ app.get('/blockchain', (req, res) => {
   res.json(blockchain)
 })
 
-app.get('/mining', (req, res) => {
+app.get('/mine', (req, res) => {
   let block = blockchain.getNextBlock(transactions)
   blockchain.addBlock(block)
+
+  // reset transactions, so the new block don't add the old ones.
+  transactions = []
   res.json(block)
+})
+
+app.get('/resolve', (req, res) => {
+
+  nodes.forEach(`${node.url}/blockchain`)
+    .then(response => response.json)
+    .then(otherBlockchain => {
+      if(blockchain.blocks.length < otherBlockchain.blocks.length) {
+        allTransactions.forEach(transaction => {
+          fetch(`${node.url}/transactinos`, {
+            method: 'POST',
+            headers: {
+              'Content-Type' : 'application/json'
+            },
+            body: JSON.stringify(transaction)
+          }).then( response => responde.json())
+            .then( _ => {
+              fetch(`${node.url}/mine`)
+                .then(response => responde.json())
+                .then(_ => {
+                  fetch(`${node.url}/blockchain`)
+                    .then(response => responde.json())
+                    .then(updatedBlockchain => {
+                      blockchain = updatedBlockchain
+                    })
+                })
+            })
+        })
+      }
+    })
+
 })
 
 app.listen(BLOCKCHAIN_NODE, () => {
